@@ -9,7 +9,6 @@ export interface Tile{
     y: number;       // The Y Coordinate
     terrain: TerrainType;
     isWalkable: boolean;
-    occupant: string | null;  // null if empty, otherwise a player ID
 }
 
 // 3. Define the Board state using the Tile interface
