@@ -107,7 +107,7 @@ useEffect(() => {
 
 
   const handleMove = (dx: number, dy: number) => {
-
+ 
     // 1. Abort if no Unit is selected
     if (!selectedUnitId) return;
 
