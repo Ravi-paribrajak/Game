@@ -88,25 +88,66 @@ const io = new Server(server, {
 // The master state will live in the server memory and the clients will send updates to the server which will then broadcast the new state to all clients
 let gameState = {
     board: generateInitialBoard(),
-    units: generateInitialUnits()
+    units: generateInitialUnits(),
+    currentTurn: 'player1'  // NEW: Player 1 always goes first
 }
 
 let connectedPlayer = 0;
+// NEW: Dictionary to map socket.id to 'player1', 'player2', or 'spectator'
+const playerRoles = {};
 
 // This is the main event listener. It triggers the moment browser connects to the server
 io.on('connection', (socket) => {
     connectedPlayer++;
+    // 1. Assign Role logic
+    let assignedRole = 'spectator'; // default role
+    const currentRole = Object.values(playerRoles);
+
+    if (!currentRole.includes('player1')) {
+        assignedRole = 'player1';
+    }
+    else if (!currentRole.includes('player2')) {
+        assignedRole = 'player2';
+    }
+
+    // Save to roster
+    playerRoles[socket.id] = assignedRole;
+
     console.log(`🔌 A new player connected! ID: ${socket.id} has connected`);
     console.log(`Total players online: ${connectedPlayer}`);
+
+    // 2. Tell the client who they are!
+    socket.emit('assignRole', assignedRole);
+
     socket.emit('initialGameState', gameState); // Send the initial game state to the newly connected player
+
     // Listen for move requests from the client
     socket.on('requestMove', (moveData) => {
         const { unitId, dx, dy } = moveData;
 
+        const myRole = playerRoles[socket.id];
+
+        // BOUNCER 1: Spectators cannot play!
+        if (myRole === 'spectator') {
+            return; // Spectators can't play, ignore the move
+        }
+
         // 1. Find the unit in the SERVER's master state
         const selectedUnit = gameState.units.find(u => u.id === unitId);
+        
+        // SAFETY CHECK FIRST: Does the unit exist?
         if (!selectedUnit) {
             return; // If the unit doesn't exist, ignore the request
+        }
+
+        // BOUNCER 2: You cannot move the opponent's pieces!
+        if (selectedUnit.ownership !== myRole) {
+            return;
+        }
+
+        // BOUNCER 3: Is it your turn?
+        if (selectedUnit.ownership !== gameState.currentTurn) {
+            return; // Ignore the move if it's not the player's turn
         }
 
         const newX = selectedUnit.x + dx;
@@ -124,6 +165,7 @@ io.on('connection', (socket) => {
 
         // 4. Collision & Combat (our exact math, but updating gameState!)
         const targetUnit = gameState.units.find(u => u.x === newX && u.y === newY);
+
 
         if (targetUnit) {
             if (targetUnit.ownership === selectedUnit.ownership) {
@@ -151,6 +193,9 @@ io.on('connection', (socket) => {
                 // Filter out dead units
                 gameState.units = gameState.units.filter(unit => unit.health > 0);
 
+                // Flip the turn
+                gameState.currentTurn = gameState.currentTurn === 'player1' ? 'player2' : 'player1';
+
                 // Broadcast the updated units to EVERYONE!
                 io.emit('gameStateUpdate', gameState);
                 return;
@@ -168,6 +213,10 @@ io.on('connection', (socket) => {
             }
             return unit;
         });
+
+        // FIXED: Flip the turn after a successful normal move!
+        gameState.currentTurn = gameState.currentTurn === 'player1' ? 'player2' : 'player1';
+
         // Broadcast the updated units to EVERYONE!
         io.emit('gameStateUpdate', gameState);
     });
@@ -175,6 +224,7 @@ io.on('connection', (socket) => {
     // This event will trigger when the player closes it's browser or disconnects from the server
     socket.on('disconnect', () => {
         connectedPlayer--;
+        delete playerRoles[socket.id]; // Free up the role!
         console.log(`❌ Player disconnected: ${socket.id} has disconnected`);
         console.log(`Total players online: ${connectedPlayer}`);
     });

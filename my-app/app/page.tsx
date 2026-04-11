@@ -15,9 +15,11 @@ export default function Home() {
   const [board, setBoard] = useState<GameBoard>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
-  
+  const [currentTurn, setCurrentTurn] = useState<string>('player1');
+  const [myRole, setMyRole] = useState<string>('spectator'); // NEW: Track if I'm player1, player2, or spectator
+
   // FIXED: Hook is safely inside the component
-  const [socket, setSocket] = useState<any>(null); 
+  const [socket, setSocket] = useState<any>(null);
 
   // FIXED: Merged into a single, clean connection cycle
   useEffect(() => {
@@ -28,14 +30,21 @@ export default function Home() {
       console.log("✅ Connected to game server! My ID:", newSocket.id);
     });
 
+    newSocket.on('assignRole', (role) => {
+      console.log(`🎭 I have been assigned the role: ${role}`);
+      setMyRole(role);
+    })
+
     newSocket.on("initialGameState", (serverState) => {
       console.log("📥 Received master state from server!", serverState);
       setBoard(serverState.board);
       setUnits(serverState.units);
+      setCurrentTurn(serverState.currentTurn);
     });
 
     newSocket.on("gameStateUpdate", (serverState) => {
       setUnits(serverState.units);
+      setCurrentTurn(serverState.currentTurn);
     });
 
     return () => {
@@ -68,8 +77,13 @@ export default function Home() {
 
   return (
     <div className="flex-col items-center justify-center min-h-screen py-2 text-black">
-      <div className="flex items-center justify-center text-white mb-4">
+      <div className="flex items-center justify-center text-white mb-4 flex-col">
         <h1 className="text-2xl font-bold">Game Board</h1>
+        <h2>{`You are Playing as: ${myRole}`}</h2>
+        <div className={`px-4 py-2 rounded font-bold uppercase tracking-wider mb-4 
+              ${currentTurn === 'player1' ? 'bg-blue-600 text-white' : 'bg-red-600 text-white'}`}>
+          {currentTurn === 'player1' ? "Blue Player's Turn" : "Red Player's Turn"}
+        </div>
       </div>
 
       <div className="flex-col items-center justify-center">
@@ -85,7 +99,9 @@ export default function Home() {
                   className={`flex relative items-center justify-center w-20 h-20 border border-amber-400 ${COLOR_MAP[tile.terrain]}`}
                   onClick={() => {
                     if (unitOnTile) {
-                      setSelectedUnitId(unitOnTile.id);
+                      if (unitOnTile.ownership === myRole) {
+                        setSelectedUnitId(unitOnTile.id);
+                      }
                     } else {
                       setSelectedUnitId(null);
                     }
