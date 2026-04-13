@@ -26,7 +26,7 @@ export default function Home() {
     const newSocket = io("http://localhost:3001");
     setSocket(newSocket);
 
-    newSocket.on("connect", () => {
+    newSocket.on("connect", () => { 
       console.log("✅ Connected to game server! My ID:", newSocket.id);
     });
 

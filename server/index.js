@@ -120,7 +120,7 @@ io.on('connection', (socket) => {
     socket.emit('assignRole', assignedRole);
 
     socket.emit('initialGameState', gameState); // Send the initial game state to the newly connected player
-
+ 
     // Listen for move requests from the client
     socket.on('requestMove', (moveData) => {
         const { unitId, dx, dy } = moveData;
