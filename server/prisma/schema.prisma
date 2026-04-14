@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User{
+  id String @id @default(uuid())
+  createdAt DateTime @default(now())
+  username String @unique
+
+  // Relations: A user can play as Player 1 or Player 2, and can win matches.
+  matchesAsPlayer1 Match[] @relation("Player1Matches")
+  matchesAsPlayer2 Match[] @relation("Player2Matches")
+  wonMatches Match[] @relation("WonMatches")
+}
+model Match {
+  id String @id @default (uuid())
+  createdAt DateTime @default(now())
+  endedAt DateTime?   // If it is null, then match is in progress.
+
+  // Foreign Keys to connect to the User table
+  player1Id String
+  player2Id String?   // Nullable, because a player might not have joined yet.
+  winnerId String?    // Nullable, because there might not be a winner yet
+
+  // Relations to the User model
+  player1 User @relation("Player1Matches", fields: [player1Id], references: [id])
+  player2 User? @relation("Player2Matches", fields: [player2Id], references: [id])
+  winner User? @relation("WonMatches", fields: [winnerId], references: [id])
+}
