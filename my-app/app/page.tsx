@@ -9,6 +9,7 @@ const COLOR_MAP: Record<TerrainType, string> = {
   'grass': "bg-green-500",
   'water': "bg-blue-500",
   'obstacle': "bg-gray-500"
+  
 }
 
 export default function Home() {
@@ -17,7 +18,7 @@ export default function Home() {
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const [currentTurn, setCurrentTurn] = useState<string>('player1');
   const [myRole, setMyRole] = useState<string>('spectator'); // NEW: Track if I'm player1, player2, or spectator
-
+   
   // FIXED: Hook is safely inside the component
   const [socket, setSocket] = useState<any>(null);
 
